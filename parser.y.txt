@@ -8,11 +8,11 @@ extern int yylex(void);
 extern int lineNumber;
 extern FILE *yyin;
 extern FILE *yyout;
-#define MAX_ID_LENGTH 100
-char id_array[1000][MAX_ID_LENGTH]; //πινακασ αποθηκευσησ id
+#define MAX_IDS 100
+char *id_array[MAX_IDS]; //πινακασ αποθηκευσησ id
 int id_count=0;
-int check_id(const char* id);
-void validate_id(char* id);
+void add_id(const char *id);
+
 %}
 
 %union{
@@ -102,15 +102,19 @@ body_contents:p
 
 p:P_OPEN p_atribute ETQUETE_END optional_text P_CLOSE;
 
-p_atribute:ID_ATRIBUTE QUOTE text QUOTE
-	|ID_ATRIBUTE QUOTE text QUOTE STYLE_ATRIBUTE QUOTE text QUOTE 
-    	|STYLE_ATRIBUTE QUOTE text QUOTE ID_ATRIBUTE QUOTE text QUOTE 	
+p_atribute:ID_ATRIBUTE QUOTE text QUOTE {add_id($3);}
+	|ID_ATRIBUTE QUOTE text QUOTE STYLE_ATRIBUTE QUOTE text QUOTE
+	{add_id($3);}
+    	|STYLE_ATRIBUTE QUOTE text QUOTE ID_ATRIBUTE QUOTE text QUOTE
+	{add_id($7);}
     	;
 
 a:A_OPEN a_atribute ETQUETE_END optional_a_content A_CLOSE;
  
 a_atribute:ID_ATRIBUTE QUOTE text QUOTE A_HREF_text
-    	|A_HREF_text ID_ATRIBUTE QUOTE text QUOTE 
+	{add_id($3);}
+    	|A_HREF_text ID_ATRIBUTE QUOTE text QUOTE
+	{add_id($4);}	
 	;
      	
 
@@ -127,11 +131,11 @@ a_content:img
 	;
 img:IMG_OPEN img_atribute ETQUETE_END;
 
-img_atribute:ID_ATRIBUTE QUOTE text QUOTE IMG_SRC_attr IMG_ALT_attr optional_img
-    |ID_ATRIBUTE QUOTE text QUOTE IMG_ALT_attr IMG_SRC_attr optional_img
-    |IMG_SRC_attr ID_ATRIBUTE QUOTE text QUOTE IMG_ALT_attr optional_img
-    |IMG_ALT_attr IMG_SRC_attr ID_ATRIBUTE QUOTE text QUOTE optional_img
-    |IMG_ALT_attr ID_ATRIBUTE QUOTE text QUOTE IMG_SRC_attr optional_img
+img_atribute:ID_ATRIBUTE QUOTE text QUOTE IMG_SRC_attr IMG_ALT_attr optional_img { add_id($3);}  
+    |ID_ATRIBUTE QUOTE text QUOTE IMG_ALT_attr IMG_SRC_attr optional_img { add_id($3);}
+    |IMG_SRC_attr ID_ATRIBUTE QUOTE text QUOTE IMG_ALT_attr optional_img { add_id($4);}
+    |IMG_ALT_attr IMG_SRC_attr ID_ATRIBUTE QUOTE text QUOTE optional_img { add_id($5);}
+    |IMG_ALT_attr ID_ATRIBUTE QUOTE text QUOTE IMG_SRC_attr optional_img { add_id($4);}
     ;
 
 IMG_SRC_attr:IMG_SRC QUOTE text QUOTE;
@@ -152,9 +156,9 @@ optional_dimensions:%empty
 
 form:FORM_OPEN form_atribute ETQUETE_END form_content1 FORM_CLOSE;
 
-form_atribute:ID_ATRIBUTE QUOTE text QUOTE
-      |ID_ATRIBUTE QUOTE text QUOTE STYLE_ATRIBUTE QUOTE text QUOTE
-      |STYLE_ATRIBUTE QUOTE text QUOTE ID_ATRIBUTE QUOTE text QUOTE
+form_atribute:ID_ATRIBUTE QUOTE text QUOTE { add_id($3);}
+      |ID_ATRIBUTE QUOTE text QUOTE STYLE_ATRIBUTE QUOTE text QUOTE { add_id($3);}
+      |STYLE_ATRIBUTE QUOTE text QUOTE ID_ATRIBUTE QUOTE text QUOTE { add_id($7);}
       ;
 
 
@@ -167,8 +171,8 @@ form_content:input
 	;
 input:INPUT_OPEN input_attr ETQUETE_END;
 
-input_attr:ID_ATRIBUTE QUOTE text QUOTE INPUT_TYPE_attr optional_input_value optional_input_style
-    |INPUT_TYPE_attr ID_ATRIBUTE QUOTE text QUOTE optional_input_value optional_input_style
+input_attr:ID_ATRIBUTE QUOTE text QUOTE INPUT_TYPE_attr optional_input_value optional_input_style { add_id($3);}
+    |INPUT_TYPE_attr ID_ATRIBUTE QUOTE text QUOTE optional_input_value optional_input_style { add_id($4);}
     ;
 
 INPUT_TYPE_attr:INPUT_TYPE QUOTE text QUOTE;
@@ -183,22 +187,22 @@ optional_input_style:%empty
  
 label:LABEL_OPEN label_atribute ETQUETE_END optional_text LABEL_CLOSE;	
 
-label_atribute:ID_ATRIBUTE QUOTE text QUOTE LABEL_FOR_attr
-    |LABEL_FOR_attr ID_ATRIBUTE QUOTE text QUOTE
-    |STYLE_ATRIBUTE QUOTE text QUOTE ID_ATRIBUTE QUOTE text QUOTE LABEL_FOR_attr
-    |ID_ATRIBUTE QUOTE text QUOTE LABEL_FOR_attr STYLE_ATRIBUTE QUOTE text QUOTE
-    |STYLE_ATRIBUTE QUOTE text QUOTE LABEL_FOR_attr ID_ATRIBUTE QUOTE text QUOTE
-    |LABEL_FOR_attr ID_ATRIBUTE QUOTE text QUOTE STYLE_ATRIBUTE QUOTE text QUOTE
-		;
+label_atribute:ID_ATRIBUTE QUOTE text QUOTE LABEL_FOR_attr {add_id($3);}
+    |LABEL_FOR_attr ID_ATRIBUTE QUOTE text QUOTE {add_id($4);}
+    |STYLE_ATRIBUTE QUOTE text QUOTE ID_ATRIBUTE QUOTE text QUOTE LABEL_FOR_attr {add_id($7);}
+    |ID_ATRIBUTE QUOTE text QUOTE LABEL_FOR_attr STYLE_ATRIBUTE QUOTE text QUOTE {add_id($3);}
+    |STYLE_ATRIBUTE QUOTE text QUOTE LABEL_FOR_attr ID_ATRIBUTE QUOTE text QUOTE {add_id($8);}
+    |LABEL_FOR_attr ID_ATRIBUTE QUOTE text QUOTE STYLE_ATRIBUTE QUOTE text QUOTE {add_id($4);}
+    ;
 
 LABEL_FOR_attr:LABEL_FOR QUOTE text QUOTE;
 
 
 div:DIV_OPEN div_atribute ETQUETE_END optional_div_content DIV_CLOSE;
 
-div_atribute:ID_ATRIBUTE QUOTE text QUOTE
-     |ID_ATRIBUTE QUOTE text QUOTE STYLE_ATRIBUTE QUOTE text QUOTE
-     |STYLE_ATRIBUTE QUOTE text QUOTE ID_ATRIBUTE QUOTE text QUOTE
+div_atribute:ID_ATRIBUTE QUOTE text QUOTE {add_id($3);}
+     |ID_ATRIBUTE QUOTE text QUOTE STYLE_ATRIBUTE QUOTE text QUOTE {add_id($3);}
+     |STYLE_ATRIBUTE QUOTE text QUOTE ID_ATRIBUTE QUOTE text QUOTE {add_id($7);}
      ;
 
 optional_div_content:%empty
@@ -227,25 +231,20 @@ void yyerror(const char *s){
 	exit(1);
 }
 
-int check_id(const char* id){
-	int i;
-	for(i=0; i<id_count; i++){
+
+void add_id(const char *id){
+int i;
+	for(i=0;i<id_count;i++){
 		if(strcmp(id_array[i],id)==0){
-			return 0; //το ID ηδη υπαρχει
+			fprintf(stderr,"Error in line %d:Duplicate id '%s'.\n", lineNumber,id);
+	exit(1);
 		}
 	}
-
-	strncpy(id_array[id_count], id, MAX_ID_LENGTH -1);
-	id_array[id_count][MAX_ID_LENGTH -1]='\0';
-	id_count++;
-	return 1; //το id ειναι μοναδικο
-}
-
-void validate_id(char* id) {
-    if (!check_id(id)) {
-        fprintf(stderr, "Error in line %d: ID '%s' is not unique!\n", lineNumber, id);
-        exit(1);
-    }
+	if(id_count>=MAX_IDS){
+		fprintf(stderr,"Error in line %d: Max number of id's reached.\n",lineNumber);
+	exit(1);
+	}
+id_array[id_count++]=strdup(id);
 }
 
 
@@ -253,7 +252,7 @@ int main(int argc,char *argv[]){
     if(argc!=2){
 	fprintf(stderr, "File name: %s file_name\n", argv[0]);
 	return 1;
-}                               
+	}                               
        yyin=fopen(argv[1],"r");              
     if(!yyin){                                
            fprintf(stderr,"I can not open the input file:%s\n",argv[1]);
@@ -261,6 +260,8 @@ int main(int argc,char *argv[]){
     }
     if(yyparse() == 0) {
 	printf("The file is correct!\n");
+
+
 }
  
 
@@ -269,6 +270,3 @@ int main(int argc,char *argv[]){
 fclose(yyin);     
    return 0;
 }
-   return 0;
-}
- 
