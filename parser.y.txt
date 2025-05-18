@@ -1,0 +1,293 @@
+%{
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+void yyerror(const char *s);
+int valid_url(const char* url);
+extern int yylex(void);
+extern int lineNumber;
+extern FILE *yyin;
+extern FILE *yyout;
+#define MAX_ID_LENGTH 100
+char id_array[1000][MAX_ID_LENGTH]; //πινακασ αποθηκευσησ id
+int id_count=0;
+int check_id(const char* id);
+void validate_id(char* id);
+%}
+
+%union{
+int num; 
+char* str;
+}
+
+%token MYHTML_OPEN	
+%token MYHTML_CLOSE	
+%token HEAD_OPEN	
+%token HEAD_CLOSE	
+%token TITLE_OPEN	
+%token TITLE_CLOSE	
+%token META_CHARSET	
+%token META_NAME 	
+%token META_CONTENT	
+%token ETQUETE_END	
+%token QUOTE		
+%token BODY_OPEN	
+%token BODY_CLOSE	
+%token P_OPEN		
+%token STYLE_ATRIBUTE		
+%token P_CLOSE		
+%token ID_ATRIBUTE	
+%token A_OPEN		
+%token A_HREF		
+%token A_CLOSE		
+%token IMG_OPEN					
+%token IMG_SRC		
+%token IMG_ALT		
+%token IMG_WIDTH	
+%token IMG_HEIGHT	
+%token FORM_OPEN	
+%token FORM_CLOSE	
+%token INPUT_OPEN	
+%token INPUT_TYPE	
+%token INPUT_VALUE	
+%token LABEL_OPEN 	
+%token LABEL_FOR	
+%token LABEL_CLOSE	
+%token DIV_OPEN		
+%token DIV_CLOSE	
+%token <str> TEXT
+%token <str> URL
+%token <str> RELATIVE_URL
+%token <num> NUMBER
+
+
+%type <str> text //δηλωση για να χρησιμοποιησουμε το'$'
+
+
+%%
+
+myhtml:MYHTML_OPEN optional_head body MYHTML_CLOSE;
+
+optional_head:%empty
+		|head
+		; 			
+head:HEAD_OPEN title meta_optional HEAD_CLOSE;
+
+title:TITLE_OPEN text TITLE_CLOSE{
+	if(strlen($2)>60){
+		fprintf(stderr,"Error in line %d: The content of the tittle is over 60 characters! \n", lineNumber);
+		exit(1);
+		}
+};
+
+meta_optional:%empty
+		|meta_optional meta  
+		;
+
+meta:META_CHARSET QUOTE text QUOTE ETQUETE_END
+	|META_NAME QUOTE text QUOTE META_CONTENT QUOTE text QUOTE ETQUETE_END
+	;
+body:BODY_OPEN optional_body_contents BODY_CLOSE;
+
+optional_body_contents:%empty
+			|optional_body_contents body_contents 
+			;
+
+body_contents:p
+	     |a
+	     |img
+	     |form
+	     |div
+	     ;
+
+p:P_OPEN p_atribute ETQUETE_END optional_text P_CLOSE;
+
+p_atribute:ID_ATRIBUTE QUOTE text QUOTE { validate_id($3); }
+	|ID_ATRIBUTE QUOTE text QUOTE STYLE_ATRIBUTE QUOTE text QUOTE { validate_id($3); }
+    	|STYLE_ATRIBUTE QUOTE text QUOTE ID_ATRIBUTE QUOTE text QUOTE { validate_id($3); }
+		
+    	;
+
+a:A_OPEN a_atribute ETQUETE_END optional_a_content A_CLOSE;
+ 
+a_atribute:ID_ATRIBUTE QUOTE text QUOTE A_HREF_text { validate_id($3); }
+    	|A_HREF_text ID_ATRIBUTE QUOTE text QUOTE { validate_id($4); }
+		
+    ;
+     	
+
+A_HREF_text:A_HREF QUOTE text QUOTE;
+	
+optional_a_content:%empty
+		|a_content
+		;
+
+a_content:img
+	|text
+	|img text
+	|text img
+	;
+img:IMG_OPEN img_atribute ETQUETE_END;
+
+img_atribute:ID_ATRIBUTE QUOTE text QUOTE IMG_SRC_attr IMG_ALT_attr optional_img
+	 { validate_id($3); }
+    |ID_ATRIBUTE QUOTE text QUOTE IMG_ALT_attr IMG_SRC_attr optional_img
+	 { validate_id($3); }
+    |IMG_SRC_attr ID_ATRIBUTE QUOTE text QUOTE IMG_ALT_attr optional_img
+	 { validate_id($4); }
+    |IMG_ALT_attr IMG_SRC_attr ID_ATRIBUTE QUOTE text QUOTE optional_img
+	 { validate_id($5); }
+    |IMG_ALT_attr ID_ATRIBUTE QUOTE text QUOTE IMG_SRC_attr optional_img
+	 { validate_id($4); }
+    ;
+
+IMG_SRC_attr:IMG_SRC QUOTE text QUOTE;
+
+IMG_ALT_attr:IMG_ALT QUOTE text QUOTE;
+
+optional_img:%empty
+      |IMG_WIDTH QUOTE NUMBER QUOTE optional_dimensions
+      |IMG_HEIGHT QUOTE NUMBER QUOTE  optional_dimensions
+        ;
+
+optional_dimensions:%empty
+      |IMG_WIDTH QUOTE NUMBER QUOTE
+      |IMG_HEIGHT QUOTE NUMBER QUOTE
+      ;
+
+
+
+form:FORM_OPEN form_atribute ETQUETE_END form_content1 FORM_CLOSE;
+
+form_atribute:ID_ATRIBUTE QUOTE text QUOTE
+	 { validate_id($3); }
+      |ID_ATRIBUTE QUOTE text QUOTE STYLE_ATRIBUTE QUOTE text QUOTE
+	 { validate_id($3); }
+      |STYLE_ATRIBUTE QUOTE text QUOTE ID_ATRIBUTE QUOTE text QUOTE
+	 { validate_id($7); }
+    ; 
+
+
+form_content1:form_content
+	|form_content form_content1
+	;
+
+form_content:input
+	|label
+	;
+input:INPUT_OPEN input_attr ETQUETE_END;
+
+input_attr:ID_ATRIBUTE QUOTE text QUOTE INPUT_TYPE_attr optional_input_value optional_input_style
+	 { validate_id($3); }
+    |INPUT_TYPE_attr ID_ATRIBUTE QUOTE text QUOTE optional_input_value optional_input_style
+	 { validate_id($4); }
+    ;
+
+INPUT_TYPE_attr:INPUT_TYPE QUOTE text QUOTE;
+
+optional_input_value:%empty
+		|INPUT_VALUE QUOTE text QUOTE
+		;
+
+optional_input_style:%empty
+		|STYLE_ATRIBUTE QUOTE text QUOTE
+		;
+ 
+label:LABEL_OPEN label_atribute ETQUETE_END optional_text LABEL_CLOSE;	
+
+label_atribute:ID_ATRIBUTE QUOTE text QUOTE LABEL_FOR_attr
+	 { validate_id($3); }
+    |LABEL_FOR_attr ID_ATRIBUTE QUOTE text QUOTE
+	 { validate_id($4); }
+    |STYLE_ATRIBUTE QUOTE text QUOTE ID_ATRIBUTE QUOTE text QUOTE LABEL_FOR_attr
+	 { validate_id($7); }
+    |ID_ATRIBUTE QUOTE text QUOTE LABEL_FOR_attr STYLE_ATRIBUTE QUOTE text QUOTE
+	 { validate_id($3); }
+    |STYLE_ATRIBUTE QUOTE text QUOTE LABEL_FOR_attr ID_ATRIBUTE QUOTE text QUOTE
+	  { validate_id($8); }
+    |LABEL_FOR_attr ID_ATRIBUTE QUOTE text QUOTE STYLE_ATRIBUTE QUOTE text QUOTE
+	  { validate_id($4); }
+			;
+
+LABEL_FOR_attr:LABEL_FOR QUOTE text QUOTE;
+
+
+div:DIV_OPEN div_atribute ETQUETE_END optional_div_content DIV_CLOSE;
+
+div_atribute:ID_ATRIBUTE QUOTE text QUOTE
+	  { validate_id($3); }
+     |ID_ATRIBUTE QUOTE text QUOTE STYLE_ATRIBUTE QUOTE text QUOTE
+	  { validate_id($3); }
+     |STYLE_ATRIBUTE QUOTE text QUOTE ID_ATRIBUTE QUOTE text QUOTE
+	  { validate_id($7); }
+    			;
+
+optional_div_content:%empty
+		|optional_div_content div_content 
+		; 
+
+div_content:p
+	|a
+	|img
+	|form
+	|div
+	;
+
+optional_text:%empty
+	|text
+	;
+
+text:TEXT;
+
+
+
+%%
+
+void yyerror(const char *s){
+	fprintf(stderr,"Error in line %d: %s \n", lineNumber, s);
+	exit(1);
+}
+
+int check_id(const char* id){
+	int i;
+	for(i=0; i<id_count; i++){
+		if(strcmp(id_array[i],id)==0){
+			return 0; //το ID ηδη υπαρχει
+		}
+	}
+
+	strncpy(id_array[id_count], id, MAX_ID_LENGTH -1);
+	id_array[id_count][MAX_ID_LENGTH -1]='\0';
+	id_count++;
+	return 1; //το id ειναι μοναδικο
+}
+
+void validate_id(char* id) {
+    if (!check_id(id)) {
+        fprintf(stderr, "Error in line %d: ID '%s' is not unique!\n", lineNumber, id);
+        exit(1);
+    }
+}
+
+
+int main(int argc,char *argv[]){               
+    if(argc!=2){
+	fprintf(stderr, "File name: %s file_name\n", argv[0]);
+	return 1;
+}                               
+       yyin=fopen(argv[1],"r");              
+    if(!yyin){                                
+           fprintf(stderr,"I can not open the input file:%s\n",argv[1]);
+           return 1;
+    }
+    if(yyparse() == 0) {
+	printf("The file is correct!\n");
+}
+ 
+
+              
+
+fclose(yyin);     
+   return 0;
+}
+ 

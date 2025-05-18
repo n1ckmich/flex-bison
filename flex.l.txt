@@ -1,0 +1,70 @@
+%{
+#include "parser.tab.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int lineNumber=1;
+%}
+
+DIGIT [0-9]
+ALPHABET [A-Za-z]
+ALPHANUM [A-Za-z] [A-Za-z0-9]
+
+%%
+"<!--"[^-](.|\n)*"-->"		{ }
+\n		{lineNumber++;}
+"<MYHTML>"	{return MYHTML_OPEN;}
+"</MYHTML>"	{return MYHTML_CLOSE;}
+"<head>"	{return HEAD_OPEN;}
+"</head>"	{return HEAD_CLOSE;}
+"<title>"	{return TITLE_OPEN;}
+"</title>"	{return TITLE_CLOSE;}
+"\""		{return QUOTE;}
+"<meta charset="	{return META_CHARSET;}
+"<meta name="		{return META_NAME;}
+"content="		{return META_CONTENT;}
+">" 		{return ETQUETE_END;}
+"<body>"	{return BODY_OPEN;}
+"</body>"	{return BODY_CLOSE;}
+"<p "		{return P_OPEN;}
+"id=" 		{return ID_ATRIBUTE;}
+"style="	{return STYLE_ATRIBUTE;}
+"</p>"		{return P_CLOSE;}
+"<a "		{return A_OPEN;}
+"href="		{return A_HREF;}
+"</a>"		{return A_CLOSE;}
+"<img " 	{return IMG_OPEN;}
+"src="		{return IMG_SRC;}
+"alt="		{return IMG_ALT;}
+"width=" 	{return IMG_WIDTH;}
+"height="	{return IMG_HEIGHT;}
+"<form "	{return FORM_OPEN;}
+"</form>"	{return FORM_CLOSE;}
+"<input "	{return INPUT_OPEN;}
+"type="		{return INPUT_TYPE;}
+"value="	{return INPUT_VALUE;}
+"<label "	{return LABEL_OPEN;}
+"for="		{return LABEL_FOR;}
+"</label>"	{return LABEL_CLOSE;}
+"<div "		{return DIV_OPEN;}
+"</div>"	{return DIV_CLOSE;}
+
+{DIGIT}+	{yylval.num=atoi(yytext); return NUMBER;}
+
+
+
+
+[A-Za-z][A-Za-z0-9\-\&\/:\. ]*   {
+	printf("Token recognized: %s\n", yytext);
+	yylval.str = strdup(yytext); 
+	return TEXT; 
+}
+
+[\t  \r]+	{ }
+.		{printf("unrecognized character: %s\n",yytext);}
+
+
+
+	  
+%%
